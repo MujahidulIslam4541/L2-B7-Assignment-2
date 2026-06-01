@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import config from "../config";
-import jwt from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { pool } from "../database";
 
 const authMiddleware = async (
@@ -8,7 +8,6 @@ const authMiddleware = async (
   res: Response,
   next: NextFunction,
 ) => {
-  console.log("Auth middleware executed", req.headers.authorization);
   const authToken = req.headers.authorization;
 
   if (!authToken) {
@@ -18,22 +17,31 @@ const authMiddleware = async (
     });
   }
 
-  const decodedToken = jwt.verify(authToken, config.accessToken) as {
-    id: string;
-  };
-  console.log("Decoded token:", decodedToken);
+  try {
+    const decodedToken = jwt.verify(
+      authToken,
+      config.accessToken,
+    ) as JwtPayload;
 
-  const issueData = await pool.query("SELECT * FROM users WHERE id = $1", [
-    decodedToken.id,
-  ]);
-  console.log("User data from DB:", issueData.rows);
-  if (issueData.rows.length === 0) {
+    const userData = await pool.query("SELECT * FROM users WHERE id = $1", [
+      decodedToken.id,
+    ]);
+
+    if (userData.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized access! Invalid token.",
+      });
+    }
+
+    req.user = userData.rows[0];
+    next();
+  } catch (error) {
     return res.status(401).json({
       success: false,
       message: "Unauthorized access! Invalid token.",
     });
   }
-  next();
 };
 
 export default authMiddleware;

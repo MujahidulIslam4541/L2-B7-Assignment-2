@@ -1,9 +1,13 @@
 import type { Request, Response } from "express";
 import { issueService } from "./issue.service";
+import type { IssueRow } from "./issue.types";
+import { pool } from "../../database";
 
 const createIssue = async (req: Request, res: Response) => {
   try {
-    const result = await issueService.issuesServiceCreate(req.body);
+    const reporterId = (req as any).user.id;
+
+    const result = await issueService.issuesServiceCreate(req.body, reporterId);
 
     res.status(201).json({
       success: true,
@@ -11,15 +15,59 @@ const createIssue = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error) {
-    res.status(500).json({
+    const err = error as any;
+    const statusCode = err.statusCode || 500;
+    res.status(statusCode).json({
       success: false,
-      message: "Failed to create issue",
-      error: (error as Error).message,
+      message: err.message || "Failed to create issue",
     });
   }
 };
 
+const getAllIssues = async (req: Request, res: Response) => {
+  try {
+    const { sort, type, status } = req.query as {
+      sort?: string;
+      type?: string;
+      status?: string;
+    };
+
+    const result = await issueService.getIssues(sort, type, status);
+
+    res.status(200).json({
+      success: true,
+      message: "Issues retrived successfully",
+      data: result,
+    });
+  } catch (error) {
+    const err = error as any;
+    res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Failed to get issues",
+    });
+  }
+};
+
+const getIssueById = async (req: Request, res: Response) => {
+  try {
+    const result = await issueService.getIssueById(req.params.id as string);
+
+    res.status(200).json({
+      success: true,
+      message: "Issue retrieved successfully",
+      data: result,
+    });
+  } catch (error) {
+    const err = error as any;
+    res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Failed to get issue",
+    });
+  }
+};
 
 export const issueController = {
   createIssue,
+  getAllIssues,
+  getIssueById,
 };
