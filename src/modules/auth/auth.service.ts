@@ -5,45 +5,62 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const userDataSaveInDb = async (userData: IUser) => {
+  const existing = await pool.query(
+    "SELECT id FROM users WHERE email = $1",
+    [userData.email]
+  );
+  if (existing.rows.length > 0) {
+    const error = new Error("Email already exists");
+    (error as any).statusCode = 400;
+    throw error;
+  }
+
   const hashedPassword = await bcrypt.hash(userData.password, 10);
   const result = await pool.query(
-    `
-    INSERT INTO users(name,email,password,role)VALUES($1,$2,$3,COALESCE($4, 'contributor'))RETURNING *
-    `,
-    [userData.name, userData.email, hashedPassword, userData.role],
+    `INSERT INTO users(name, email, password, role)
+     VALUES($1, $2, $3, COALESCE($4, 'contributor'))
+     RETURNING *`,
+    [userData.name, userData.email, hashedPassword, userData.role]
   );
 
-  delete result.rows[0].password;
-
-  return result.rows[0];
+  const { password: _, ...userWithoutPassword } = result.rows[0];
+  return userWithoutPassword;
 };
 
 const loginUserInDb = async (userData: { email: string; password: string }) => {
   const { email, password } = userData;
 
-  const result = await pool.query("SELECT * FROM users WHERE email =$1", [
-    email,
-  ]);
+  const result = await pool.query(
+    "SELECT * FROM users WHERE email = $1",
+    [email]
+  );
   const user = result.rows[0];
+
   if (!user) {
-    throw new Error("User not found");
+    const error = new Error("User not found");
+    (error as any).statusCode = 404;
+    throw error;
   }
 
   const matchPassword = await bcrypt.compare(password, user.password);
   if (!matchPassword) {
-    throw new Error("Invalid credentials");
+    const error = new Error("Invalid credentials");
+    (error as any).statusCode = 401;
+    throw error;
   }
+
   const jwtPayload = {
     id: user.id,
-    email: user.email,
+    name: user.name,   
     role: user.role,
   };
+
   const token = jwt.sign(jwtPayload, config.accessToken, {
     expiresIn: config.accessTokenExpiration as any,
   });
 
- delete user.password;
-  return { token, user };
+  const { password: _, ...userWithoutPassword } = user;
+  return { token, user: userWithoutPassword };
 };
 
 export const authService = {

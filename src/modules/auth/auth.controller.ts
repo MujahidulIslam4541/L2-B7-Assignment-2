@@ -23,13 +23,6 @@ const loginUser = async (req: Request, res: Response) => {
   try {
     const result = await authService.loginUserInDb(req.body);
 
-    // if (!result) {
-    //   return res.status(401).json({
-    //     success: false,
-    //     message: "Invalid email or password",
-    //   });
-    // }
-
     res.status(200).json({
       success: true,
       message: "User logged in successfully",
