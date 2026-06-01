@@ -4,6 +4,7 @@ import express, {
   type Response,
 } from "express";
 import cookieParser from "cookie-parser";
+import { authRoutes } from "./modules/auth/auth.routes";
 
 
 const app: Application = express();
@@ -16,5 +17,7 @@ app.get("/", (_req: Request, res: Response) => {
   res.status(200).json({ message: "Server is running" });
 });
 
+
+app.use("/api/auth", authRoutes);
 
 export default app;
