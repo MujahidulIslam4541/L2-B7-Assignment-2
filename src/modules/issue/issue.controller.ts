@@ -1,11 +1,9 @@
 import type { Request, Response } from "express";
 import { issueService } from "./issue.service";
-import type { IssueRow } from "./issue.types";
-import { pool } from "../../database";
 
 const createIssue = async (req: Request, res: Response) => {
   try {
-    const reporterId = (req as any).user.id;
+    const reporterId = req.user!.id;
 
     const result = await issueService.issuesServiceCreate(req.body, reporterId);
 
@@ -20,6 +18,45 @@ const createIssue = async (req: Request, res: Response) => {
     res.status(statusCode).json({
       success: false,
       message: err.message || "Failed to create issue",
+    });
+  }
+};
+
+const updateIssue = async (req: Request, res: Response) => {
+  try {
+    const result = await issueService.updateIssue(
+      req.params.id as string,
+      req.body,
+      req.user!,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Issue updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    const err = error as any;
+    res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Failed to update issue",
+    });
+  }
+};
+
+const deleteIssue = async (req: Request, res: Response) => {
+  try {
+    await issueService.deleteIssue(req.params.id as string, req.user!);
+
+    res.status(200).json({
+      success: true,
+      message: "Issue deleted successfully",
+    });
+  } catch (error) {
+    const err = error as any;
+    res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message || "Failed to delete issue",
     });
   }
 };
@@ -70,4 +107,6 @@ export const issueController = {
   createIssue,
   getAllIssues,
   getIssueById,
+  updateIssue,
+  deleteIssue,
 };
