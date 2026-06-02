@@ -1,235 +1,128 @@
-# DevPulse - Assignment Tech Issue & Feature Tracker
+# DevPulse API
 
-A collaborative platform for software teams to report bugs, suggest features, and coordinate resolutions.
+Backend API for tracking technical issues and feature requests with role-based access control for contributors and maintainers.
 
-## Prerequisites
+## Project Overview
 
-- Node.js 24.x or higher
-- PostgreSQL (running locally or remote)
-- npm or yarn
+- Project Name: DevPulse API
+- Live URL: Not deployed yet (add your production link here)
+- Base URL (local): http://localhost:8000
 
-## Setup Instructions
+## Core Features
 
-### 1. Environment Configuration
+- User registration and login with JWT authentication
+- Role-based authorization with maintainer and contributor roles
+- Create issue with validation for title, description, and type
+- View issues with optional filtering by type and status
+- Sort issue list by newest or oldest
+- View single issue details by issue ID
+- Update issue rules:
+  - Maintainer can update any issue
+  - Contributor can update only own issue when status is open
+- Delete issue rules:
+  - Maintainer only
+- Consistent JSON response pattern for success and errors
 
-Create a `.env` file in the root directory with the following variables:
+## Tech Stack
 
-```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/devpulse
-JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
-NODE_ENV=development
-```
+- Runtime: Node.js
+- Language: TypeScript
+- Framework: Express.js
+- Database: PostgreSQL
+- Authentication: JSON Web Token (jsonwebtoken)
+- Password Hashing: bcrypt
+- Environment Config: dotenv
 
-### 2. Database Setup
+## Setup Guide
 
-Before running the application, ensure PostgreSQL is running:
+### 1) Clone and install
 
-```bash
-# Create database (run in PostgreSQL terminal)
-CREATE DATABASE devpulse;
-```
+- Clone this repository
+- Install dependencies:
+  - npm install
 
-### 3. Install Dependencies
+### 2) Create environment file
 
-```bash
-npm install
-```
+Create a .env file at the project root and set:
 
-### 4. Start the Development Server
+- PORT=8000
+- DATABASE_URL=postgresql://postgres:password@localhost:5432/devpulse
+- ACCESS_TOKEN_SECRET=your_super_secret_key
+- ACCESS_TOKEN_EXPIRATION=7d
 
-```bash
-npm run dev
-```
+### 3) Prepare database
 
-The server will start on `http://localhost:8000` and automatically create the database schema.
+- Create a PostgreSQL database named devpulse (or use your preferred name in DATABASE_URL)
+- On server start, tables are auto-created by the app
 
-## API Endpoints
+### 4) Run the server
 
-### Authentication Module
+- Development:
+  - npm run dev
+- One-time run:
+  - npm start
 
-#### Sign Up (Public)
+## API Endpoint List
 
-```
-POST /api/auth/signup
-Content-Type: application/json
+### Health
 
-{
-  "name": "John Doe",
-  "email": "john.doe@devpulse.com",
-  "password": "securePassword123",
-  "role": "contributor"
-}
-```
+- GET /
 
-#### Login (Public)
+### Auth
 
-```
-POST /api/auth/login
-Content-Type: application/json
+- POST /api/auth/signup
+- POST /api/auth/login
 
-{
-  "email": "john.doe@devpulse.com",
-  "password": "securePassword123"
-}
-```
+### Issues
 
-### Issues Module
+- POST /api/issues
+  - Access: Authenticated user
+- GET /api/issues
+  - Optional query params:
+    - sort: newest or oldest
+    - type: bug or feature_request
+    - status: open, in_progress, resolved
+- GET /api/issues/:id
+- PATCH /api/issues/:id
+  - Access:
+    - Maintainer: any issue
+    - Contributor: own issue only when status is open
+- DELETE /api/issues/:id
+  - Access: Maintainer only
 
-#### Create Issue (Authenticated)
+## Database Schema Summary
 
-```
-POST /api/issues
-Authorization: Bearer <JWT_TOKEN>
-Content-Type: application/json
+### users table
 
-{
-  "title": "Database connection timeout under load",
-  "description": "Pool exhausts after 50+ concurrent queries, causing 500 errors",
-  "type": "bug"
-}
-```
+- id: SERIAL PRIMARY KEY
+- name: VARCHAR(100) NOT NULL
+- email: VARCHAR(255) UNIQUE NOT NULL
+- password: VARCHAR(255) NOT NULL
+- role: VARCHAR(20), default contributor, allowed values maintainer or contributor
+- created_at: TIMESTAMP, default NOW()
+- updated_at: TIMESTAMP, default NOW()
 
-#### Get All Issues (Public)
+### issues table
 
-```
-GET /api/issues?sort=newest&type=bug&status=open
-```
+- id: SERIAL PRIMARY KEY
+- title: VARCHAR(150) NOT NULL
+- description: TEXT NOT NULL
+- type: VARCHAR(20), allowed values bug or feature_request
+- status: VARCHAR(20), default open, allowed values open, in_progress, resolved
+- reporter_id: INTEGER NOT NULL
+- created_at: TIMESTAMP, default NOW()
+- updated_at: TIMESTAMP, default NOW()
 
-Query Parameters:
+## Response Pattern
 
-- `sort`: `newest` (default) or `oldest`
-- `type`: `bug` or `feature_request` (optional)
-- `status`: `open`, `in_progress`, or `resolved` (optional)
+Standard success response:
 
-#### Get Single Issue (Public)
+- success: true
+- message: operation description
+- data: response payload
 
-```
-GET /api/issues/:id
-```
+Standard error response:
 
-#### Update Issue (Authenticated)
-
-```
-PATCH /api/issues/:id
-Authorization: Bearer <JWT_TOKEN>
-Content-Type: application/json
-
-{
-  "title": "Updated title",
-  "description": "Updated description",
-  "type": "bug"
-}
-```
-
-**Permissions:**
-
-- Maintainers: Can update any issue
-- Contributors: Can only update their own issues if status is "open"
-
-#### Delete Issue (Maintainers Only)
-
-```
-DELETE /api/issues/:id
-Authorization: Bearer <JWT_TOKEN>
-```
-
-## User Roles & Permissions
-
-### Contributor
-
-- Register and log in
-- Create new issues
-- View all issues
-- Update own issues (only if status is open)
-
-### Maintainer
-
-- All contributor permissions
-- Update any issue
-- Delete any issue
-- Change issue workflow status
-
-## Project Structure
-
-```
-src/
-├── config/
-│   ├── database.ts      # Database connection setup
-│   └── schema.ts        # Database schema creation
-├── middleware/
-│   └── auth.ts          # JWT verification and error handling
-├── routes/
-│   ├── auth.ts          # Authentication endpoints
-│   └── issues.ts        # Issues CRUD endpoints
-├── utils/
-│   └── auth.ts          # Password hashing and JWT utilities
-├── types/
-│   └── index.ts         # TypeScript type definitions
-└── server.ts            # Main server file
-```
-
-## Technical Stack
-
-- **Runtime**: Node.js (ES modules)
-- **Language**: TypeScript
-- **Framework**: Express.js
-- **Database**: PostgreSQL
-- **Authentication**: JWT (jsonwebtoken)
-- **Password Hashing**: bcrypt
-- **Status Codes**: http-status-codes
-
-## Database Schema
-
-### Users Table
-
-- id (SERIAL PRIMARY KEY)
-- name (VARCHAR 255, NOT NULL)
-- email (VARCHAR 255, NOT NULL, UNIQUE)
-- password (VARCHAR 255, NOT NULL)
-- role (VARCHAR 20, DEFAULT 'contributor')
-- created_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP)
-- updated_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP)
-
-### Issues Table
-
-- id (SERIAL PRIMARY KEY)
-- title (VARCHAR 150, NOT NULL)
-- description (TEXT, NOT NULL)
-- type (VARCHAR 20, NOT NULL: 'bug' or 'feature_request')
-- status (VARCHAR 20, DEFAULT 'open': 'open', 'in_progress', 'resolved')
-- reporter_id (INTEGER, NOT NULL)
-- created_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP)
-- updated_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP)
-
-## Response Format
-
-### Success Response
-
-```json
-{
-  "success": true,
-  "message": "Operation description",
-  "data": {}
-}
-```
-
-### Error Response
-
-```json
-{
-  "success": false,
-  "message": "Error description",
-  "errors": "Error details"
-}
-```
-
-## HTTP Status Codes
-
-- `200 OK`: Successful GET, PATCH, DELETE
-- `201 Created`: Successful POST
-- `400 Bad Request`: Validation errors
-- `401 Unauthorized`: Missing or invalid JWT
-- `403 Forbidden`: Insufficient permissions
-- `404 Not Found`: Resource not found
-- `409 Conflict`: Business logic conflict
-- `500 Internal Server Error`: Server error
+- success: false
+- message: error description
+- errors: error details
