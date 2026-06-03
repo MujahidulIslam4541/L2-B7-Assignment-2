@@ -35,7 +35,7 @@ export const connectDB = async () => {
         )
       `);
     console.log("✅ Database connected and issues table ensured");
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Full error:", error);
   }
 };

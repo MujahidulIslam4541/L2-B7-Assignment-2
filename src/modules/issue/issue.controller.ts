@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { issueService } from "./issue.service";
 
+type WithStatusCode = Error & { statusCode?: number };
+
 const createIssue = async (req: Request, res: Response) => {
   try {
     const reporterId = req.user!.id;
@@ -13,7 +15,7 @@ const createIssue = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error) {
-    const err = error as any;
+    const err = error as WithStatusCode;
     const statusCode = err.statusCode || 500;
     res.status(statusCode).json({
       success: false,
@@ -36,7 +38,7 @@ const updateIssue = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error) {
-    const err = error as any;
+    const err = error as WithStatusCode;
     res.status(err.statusCode || 500).json({
       success: false,
       message: err.message || "Failed to update issue",
@@ -53,7 +55,7 @@ const deleteIssue = async (req: Request, res: Response) => {
       message: "Issue deleted successfully",
     });
   } catch (error) {
-    const err = error as any;
+    const err = error as WithStatusCode;
     res.status(err.statusCode || 500).json({
       success: false,
       message: err.message || "Failed to delete issue",
@@ -77,7 +79,7 @@ const getAllIssues = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error) {
-    const err = error as any;
+    const err = error as WithStatusCode;
     res.status(err.statusCode || 500).json({
       success: false,
       message: err.message || "Failed to get issues",
@@ -95,7 +97,7 @@ const getIssueById = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error) {
-    const err = error as any;
+    const err = error as WithStatusCode;
     res.status(err.statusCode || 500).json({
       success: false,
       message: err.message || "Failed to get issue",

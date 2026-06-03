@@ -1,17 +1,17 @@
 import config from "../../config";
 import { pool } from "../../database";
 import type { IUser } from "./auth.types";
+type WithStatusCode = Error & { statusCode?: number };
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const userDataSaveInDb = async (userData: IUser) => {
-  const existing = await pool.query(
-    "SELECT id FROM users WHERE email = $1",
-    [userData.email]
-  );
+  const existing = await pool.query("SELECT id FROM users WHERE email = $1", [
+    userData.email,
+  ]);
   if (existing.rows.length > 0) {
     const error = new Error("Email already exists");
-    (error as any).statusCode = 400;
+    (error as WithStatusCode).statusCode = 400;
     throw error;
   }
 
@@ -20,7 +20,7 @@ const userDataSaveInDb = async (userData: IUser) => {
     `INSERT INTO users(name, email, password, role)
      VALUES($1, $2, $3, COALESCE($4, 'contributor'))
      RETURNING *`,
-    [userData.name, userData.email, hashedPassword, userData.role]
+    [userData.name, userData.email, hashedPassword, userData.role],
   );
 
   const { password: _, ...userWithoutPassword } = result.rows[0];
@@ -30,28 +30,27 @@ const userDataSaveInDb = async (userData: IUser) => {
 const loginUserInDb = async (userData: { email: string; password: string }) => {
   const { email, password } = userData;
 
-  const result = await pool.query(
-    "SELECT * FROM users WHERE email = $1",
-    [email]
-  );
+  const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+    email,
+  ]);
   const user = result.rows[0];
 
   if (!user) {
     const error = new Error("User not found");
-    (error as any).statusCode = 404;
+    (error as WithStatusCode).statusCode = 404;
     throw error;
   }
 
   const matchPassword = await bcrypt.compare(password, user.password);
   if (!matchPassword) {
     const error = new Error("Invalid credentials");
-    (error as any).statusCode = 401;
+    (error as WithStatusCode).statusCode = 401;
     throw error;
   }
 
   const jwtPayload = {
     id: user.id,
-    name: user.name,   
+    name: user.name,
     role: user.role,
   };
 

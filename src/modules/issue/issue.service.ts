@@ -1,26 +1,25 @@
-
 import { pool } from "../../database";
 import type { Issue, IssueRow } from "./issue.types";
+
+type WithStatusCode = Error & { statusCode?: number };
 
 type IssueActor = {
   id: number;
   role: "maintainer" | "contributor";
 };
 
-
 const buildError = (message: string, statusCode: number) => {
   const error = new Error(message);
-  (error as any).statusCode = statusCode;
+  (error as WithStatusCode).statusCode = statusCode;
   return error;
 };
-
 
 const validateIssueInput = (issueData: Partial<Issue>, isUpdate = false) => {
   if (!isUpdate || issueData.title !== undefined) {
     if (!issueData.title || issueData.title.trim() === "") {
       throw buildError(
         isUpdate ? "Title cannot be empty" : "Title is required",
-        400
+        400,
       );
     }
     if (issueData.title.length > 150) {
@@ -32,7 +31,7 @@ const validateIssueInput = (issueData: Partial<Issue>, isUpdate = false) => {
     if (!issueData.description || issueData.description.trim() === "") {
       throw buildError(
         isUpdate ? "Description cannot be empty" : "Description is required",
-        400
+        400,
       );
     }
     if (issueData.description.length < 20) {
@@ -41,7 +40,10 @@ const validateIssueInput = (issueData: Partial<Issue>, isUpdate = false) => {
   }
 
   if (!isUpdate || issueData.type !== undefined) {
-    if (!issueData.type || !["bug", "feature_request"].includes(issueData.type)) {
+    if (
+      !issueData.type ||
+      !["bug", "feature_request"].includes(issueData.type)
+    ) {
       throw buildError("Type must be bug or feature_request", 400);
     }
   }
@@ -58,11 +60,10 @@ const getIssueOrThrow = async (id: string): Promise<IssueRow> => {
   return issue as IssueRow;
 };
 
-
 const getIssueWithReporter = async (issue: IssueRow) => {
   const reporterResult = await pool.query(
     "SELECT id, name, role FROM users WHERE id = $1",
-    [issue.reporter_id]
+    [issue.reporter_id],
   );
 
   const { reporter_id, ...rest } = issue;
@@ -77,10 +78,9 @@ const canContributorUpdate = (issue: IssueRow, user: IssueActor) => {
   return issue.reporter_id === user.id && issue.status === "open";
 };
 
-
 const issuesServiceCreate = async (
   issuesData: Issue,
-  reporterId: number
+  reporterId: number,
 ): Promise<IssueRow> => {
   validateIssueInput(issuesData);
 
@@ -88,7 +88,7 @@ const issuesServiceCreate = async (
     `INSERT INTO issues (title, description, type, reporter_id)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [issuesData.title, issuesData.description, issuesData.type, reporterId]
+    [issuesData.title, issuesData.description, issuesData.type, reporterId],
   );
 
   return result.rows[0];
@@ -114,7 +114,10 @@ const getIssues = async (sort?: string, type?: string, status?: string) => {
     query += " WHERE " + conditions.join(" AND ");
   }
 
-  query += sort === "oldest" ? " ORDER BY created_at ASC" : " ORDER BY created_at DESC";
+  query +=
+    sort === "oldest"
+      ? " ORDER BY created_at ASC"
+      : " ORDER BY created_at DESC";
 
   const issuesResult = await pool.query(query, values);
   const issues: IssueRow[] = issuesResult.rows;
@@ -125,10 +128,13 @@ const getIssues = async (sort?: string, type?: string, status?: string) => {
 
   const reportersResult = await pool.query(
     "SELECT id, name, role FROM users WHERE id = ANY($1::int[])",
-    [reporterIds]
+    [reporterIds],
   );
 
-  const reporterMap: Record<number, { id: number; name: string; role: string }> = {};
+  const reporterMap: Record<
+    number,
+    { id: number; name: string; role: string }
+  > = {};
   reportersResult.rows.forEach((reporter) => {
     reporterMap[reporter.id] = reporter;
   });
@@ -150,7 +156,7 @@ const getIssueById = async (id: string) => {
 const updateIssue = async (
   id: string,
   issueData: Partial<Issue>,
-  user: IssueActor
+  user: IssueActor,
 ) => {
   if (!issueData.title && !issueData.description && !issueData.type) {
     throw buildError("At least one field is required to update the issue", 400);
