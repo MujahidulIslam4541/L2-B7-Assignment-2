@@ -35,9 +35,9 @@ Backend API for tracking technical issues and feature requests with role-based a
 
 ## Setup Guide
 
-### 1) Clone and install
+### 1) Navigate to project and install
 
-- Clone this repository
+- Open terminal inside your project folder
 - Install dependencies:
   - npm install
 
