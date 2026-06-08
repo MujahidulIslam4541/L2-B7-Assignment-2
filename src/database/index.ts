@@ -20,7 +20,7 @@ export const connectDB = async () => {
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    console.log("✅ Database connected and users table ensured");
+    console.log("Database connected and users table ensured");
 
     await pool.query(`
         CREATE TABLE IF NOT EXISTS issues (
@@ -34,7 +34,7 @@ export const connectDB = async () => {
           updated_at     TIMESTAMP DEFAULT NOW()
         )
       `);
-    console.log("✅ Database connected and issues table ensured");
+    console.log("Database connected and issues table ensured");
   } catch (error: unknown) {
     console.error("❌ Full error:", error);
   }
